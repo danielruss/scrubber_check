@@ -1,6 +1,6 @@
-use std::{ fmt::{Display,Formatter}};
+use std::fmt::{Display,Formatter};
 
-#[derive(Debug)]
+#[derive(Debug,Clone,PartialEq, Eq)]
 pub struct Scrubbed{
     original_value : String,
     scrubbed_value : String,
@@ -26,6 +26,11 @@ impl Display for Scrubbed {
     }
 }
 
+impl From<&Scrubbed> for String{
+    fn from(value: &Scrubbed) -> Self {
+        format!("Scrubbed: '{}', Original: '{}'",value.scrubbed_value, value.original_value)
+    }    
+}
 pub fn compare<'o>(scrubbed:&'o str, original:&'o str) -> Vec<Scrubbed>{
     let mut result = Vec::new();
     let mut scrubbed_iter = scrubbed.char_indices();
@@ -120,6 +125,8 @@ mod tests {
         assert_eq!(&result[0].original_value,"Dr. Rebbis");
         assert_eq!(&result[1].scrubbed_value,"[PERSONALNAME]");
         assert_eq!(&result[1].original_value,"Frank"); 
-        println!("{:?}",result)
+        println!("{:?}",result);
+        println!("==> fmt: {}",result[0]);
+        println!("==> from: {}",String::from(&result[0]));
     }
 }
