@@ -1,4 +1,4 @@
-use std::{cmp::min, fmt::{Display,Formatter}};
+use std::{ fmt::{Display,Formatter}};
 
 #[derive(Debug)]
 pub struct Scrubbed{
@@ -20,8 +20,8 @@ impl Display for Scrubbed {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Original: '{}', Scrubbed: '{}'",
-            self.original_value, self.scrubbed_value
+            "Scrubbed: '{}', Original: '{}'",
+            self.scrubbed_value, self.original_value
         )
     }
 }
@@ -35,20 +35,34 @@ pub fn compare<'o>(scrubbed:&'o str, original:&'o str) -> Vec<Scrubbed>{
         (scrubbed_iter.next(), original_iter.next()){
         match (scrubbed_char,original_char) {
             (s,c) if s==c => {},
-            (s,_c) if s=='[' => {
+            (s,_) if s=='[' => {
                 let mut sindx = 0;
                 let mut sz=s;
+                let mut n_check=5usize;
                 while sz != ']' {
                     if let Some( (i,c) ) = scrubbed_iter.next(){
                         //println!("{}: {}",i,c);
                         sz=c;
                         sindx=i;
+                        // hit the end of the Scrubbed text...
+                        if sz==']'{
+                            n_check = if sindx + n_check > scrubbed.len() {scrubbed.len()-sindx} else { n_check };
+                            let check_s = &scrubbed[sindx..sindx+n_check];
+                            match check_s.find('[') {
+                                // two back to back items where scrubbed...
+                                // dont stop combine the two
+                                Some(0) =>  sz=' ',
+                                // truncate n_check
+                                Some(n) => n_check=n-1,
+                                // no '['
+                                None => {}
+                            } 
+                        }
                     }
                 }
                 sindx+=1;
 
-                // check the next 5 letter... for '['
-                let n_check = min(5, scrubbed[sindx..].len());
+                // check the next n letter... 
                 //println!("check {} chars ==> {}>{}<",n_check,sindx,&scrubbed[sindx..sindx+n_check]);
                 if n_check == 0 {
                     result.push(Scrubbed::new(&scrubbed[scrubbed_index..sindx],&original[original_index..]) );
@@ -65,13 +79,17 @@ pub fn compare<'o>(scrubbed:&'o str, original:&'o str) -> Vec<Scrubbed>{
                             result.push(Scrubbed::new(&scrubbed[scrubbed_index..sindx],&original[original_index..]) );
                             return result
                         }
+                        if uindx>original_index+50{
+                            return result;
+                        }
                     }
                     //println!("{}: >{}< {}: >{}<",sindx,&scrubbed[sindx..],uindx,&original[uindx..]);
                     result.push(Scrubbed::new(&scrubbed[scrubbed_index..sindx],&original[original_index..uindx]) );
                 }
             },
-            _ => {
-                println!(".... out of alignment ... >{}<  >{}<",&scrubbed[scrubbed_index..],&original[original_index..]);
+            (s,c) => {
+                eprintln!("scrub char: {}\norig char: {}",s,c);
+                eprintln!(".... out of alignment ... >{}<  >{}<",&scrubbed[scrubbed_index..scrubbed_index+10],&original[original_index..original_index+10]);
                 return result;
             }
         }
